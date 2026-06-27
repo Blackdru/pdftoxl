@@ -1,5 +1,6 @@
-package com.pdftoxl
+package com.robotpdf.pdftoexcel
 
+import android.os.Bundle
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -19,4 +20,10 @@ class MainActivity : ReactActivity() {
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    // Remove the default React Native splash screen
+    setTheme(R.style.AppTheme)
+    super.onCreate(null)
+  }
 }

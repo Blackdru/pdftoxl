@@ -1,4 +1,4 @@
-package com.pdftoxl
+package com.robotpdf.pdftoexcel
 
 import android.app.Application
 import com.facebook.react.PackageList

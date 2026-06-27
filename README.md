@@ -1,97 +1,662 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Bank Statement Analyzer & Expense Tracker
 
-# Getting Started
+## AI Engineering Master Prompt (Version 2.0)
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+---
 
-## Step 1: Start Metro
+# PROJECT OVERVIEW
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+You are upgrading an existing Android application built using React Native.
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+The current application converts PDF files into Excel files using RobotPDF APIs.
 
-```sh
-# Using npm
-npm start
+Current workflow:
 
-# OR using Yarn
-yarn start
+```text
+PDF
+↓
+Upload
+↓
+RobotPDF API
+↓
+Excel File
+↓
+Download
 ```
 
-## Step 2: Build and run your app
+The application is already:
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+* Published on Google Play Store
+* Has existing users
+* Has an existing PDF upload flow
+* Has an existing conversion workflow
+* Uses RobotPDF APIs
 
-### Android
+Version 2.0 transforms the application into:
 
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```text
+PDF to Excel Converter
+            +
+Bank Statement Analyzer
+            +
+Expense Tracker
 ```
 
-### iOS
+This is NOT a banking app.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+This is NOT an account aggregator.
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+This is NOT an internet banking application.
 
-```sh
-bundle install
+The statement itself becomes the source of financial data.
+
+---
+
+# PRODUCT GOAL
+
+Allow users to upload:
+
+* PDF bank statements
+* Excel statements
+* CSV statements
+
+and instantly:
+
+* Extract transactions
+* Analyze expenses
+* Categorize spending
+* Detect subscriptions
+* Show charts and insights
+* Track spending patterns
+
+without:
+
+* Bank login
+* SMS permissions
+* Account linking
+* Open banking APIs
+* Internet banking credentials
+
+---
+
+# EXISTING TECHNOLOGY STACK
+
+## Mobile
+
+* React Native CLI
+
+## Backend
+
+* Node.js
+* Express.js
+
+## Database
+
+* Supabase PostgreSQL
+* Prisma ORM
+
+## Existing Services
+
+* RobotPDF APIs
+
+---
+
+# EXISTING FEATURE
+
+## PDF TO EXCEL
+
+Current flow:
+
+```text
+PDF
+↓
+RobotPDF API
+↓
+Excel
+↓
+Download
 ```
 
-Then, and every time you update your native dependencies, run:
+This feature must remain unchanged.
 
-```sh
-bundle exec pod install
+---
+
+# NEW FEATURE 1
+
+## ANALYZE AFTER CONVERSION
+
+After a PDF is converted successfully, the result screen must show:
+
+* Download Excel
+* Share File
+* Analyze Statement
+
+Flow:
+
+```text
+PDF
+↓
+RobotPDF
+↓
+Excel Generated
+↓
+Analyze Statement
+↓
+Expense Dashboard
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+The generated Excel file should automatically be parsed without requiring another upload.
 
-```sh
-# Using npm
-npm run ios
+---
 
-# OR using Yarn
-yarn ios
+# NEW FEATURE 2
+
+## BANK STATEMENT ANALYZER
+
+Home screen must include:
+
+### Card 1
+
+```text
+PDF to Excel
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+Convert PDF files into Excel.
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+---
 
-## Step 3: Modify your app
+### Card 2
 
-Now that you have successfully run the app, let's make changes!
+```text
+Bank Statement Analyzer
+```
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+Analyze bank statements and track expenses.
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+Supports:
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+* PDF
+* XLS
+* XLSX
+* CSV
 
-## Congratulations! :tada:
+---
 
-You've successfully run and modified your React Native App. :partying_face:
+# HOME SCREEN
 
-### Now what?
+```text
+--------------------------------
+PDF to Excel
+--------------------------------
+Convert PDF files into Excel.
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+[ Open ]
 
-# Troubleshooting
+--------------------------------
+Bank Statement Analyzer
+--------------------------------
+Analyze your bank statements.
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+Supports:
+✓ PDF
+✓ Excel
+✓ CSV
 
-# Learn More
+[ Analyze ]
+```
 
-To learn more about React Native, take a look at the following resources:
+---
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+# SUPPORTED FILES
+
+* PDF
+* XLS
+* XLSX
+* CSV
+
+---
+
+# FILE PROCESSING
+
+## PDF
+
+PDF statements are uploaded to RobotPDF.
+
+RobotPDF extracts transaction tables.
+
+---
+
+## Excel
+
+Parse locally using XLSX library.
+
+---
+
+## CSV
+
+Parse locally.
+
+---
+
+# PROCESSING PIPELINE
+
+```text
+PDF / XLS / CSV
+        ↓
+Transaction Extraction
+        ↓
+Standard Transaction Model
+        ↓
+Merchant Cleanup
+        ↓
+Category Engine
+        ↓
+Analysis Engine
+        ↓
+Charts & Dashboard
+```
+
+---
+
+# UNIVERSAL TRANSACTION MODEL
+
+```json
+{
+  "date": "2026-06-01",
+  "description": "UPI/ZOMATO",
+  "amount": 342,
+  "type": "DEBIT",
+  "balance": 15432
+}
+```
+
+Optional:
+
+```json
+{
+  "merchant": "Zomato",
+  "category": "Food",
+  "isRecurring": false
+}
+```
+
+---
+
+# TRANSACTION EXTRACTION
+
+Extract:
+
+* Date
+* Description
+* Debit
+* Credit
+* Amount
+* Balance
+
+The parser must support:
+
+* Separate Debit/Credit columns
+* Single Amount columns
+* Different date formats
+
+---
+
+# MERCHANT CLEANUP
+
+Examples:
+
+```text
+UPI/ZOMATO
+↓
+Zomato
+```
+
+```text
+GOOGLE*YOUTUBE
+↓
+YouTube Premium
+```
+
+```text
+AMZN
+↓
+Amazon
+```
+
+```text
+UBER TRIP
+↓
+Uber
+```
+
+Merchant recognition should use:
+
+* Dictionary matching
+* Keyword matching
+* Alias database
+
+---
+
+# EXPENSE CATEGORIES
+
+Default categories:
+
+* Food
+* Shopping
+* Travel
+* Transportation
+* Bills
+* Entertainment
+* Healthcare
+* Education
+* Investments
+* Income
+* Transfers
+* Subscription
+* Others
+
+Users may edit categories later.
+
+---
+
+# ANALYSIS ENGINE
+
+Calculate:
+
+## Total Income
+
+Sum of credits.
+
+---
+
+## Total Expenses
+
+Sum of debits.
+
+---
+
+## Savings
+
+Income minus expenses.
+
+---
+
+## Category Spending
+
+Total spending by category.
+
+---
+
+## Top Merchants
+
+Most used merchants.
+
+---
+
+## Monthly Spending
+
+Spending trends.
+
+---
+
+# SUBSCRIPTION DETECTION
+
+Detect recurring payments.
+
+Examples:
+
+* Netflix
+* Spotify
+* ChatGPT
+* YouTube Premium
+* Insurance
+* EMI
+* SIP
+
+Rules:
+
+* Same merchant
+* Similar amount
+* Regular intervals
+
+---
+
+# DASHBOARD SCREENS
+
+---
+
+## SCREEN 1 — OVERVIEW
+
+Cards:
+
+* Total Income
+* Total Expenses
+* Net Savings
+
+Charts:
+
+* Income vs Expenses
+
+---
+
+## SCREEN 2 — CATEGORY ANALYSIS
+
+Pie chart.
+
+Examples:
+
+* Food
+* Shopping
+* Bills
+
+---
+
+## SCREEN 3 — SPENDING TRENDS
+
+Line chart.
+
+Monthly spending.
+
+---
+
+## SCREEN 4 — MERCHANTS
+
+Top spending merchants.
+
+---
+
+## SCREEN 5 — TRANSACTIONS
+
+Searchable transaction list.
+
+Filters:
+
+* Category
+* Date
+* Amount
+
+---
+
+# CHARTS
+
+Use:
+
+* Pie Chart
+* Bar Chart
+* Line Chart
+
+Libraries:
+
+* react-native-gifted-charts
+
+---
+
+# RECOMMENDED LIBRARIES
+
+## File Picker
+
+* react-native-document-picker
+
+## Excel Parsing
+
+* xlsx
+
+## CSV Parsing
+
+* papaparse
+
+## Charts
+
+* react-native-gifted-charts
+
+## Date Handling
+
+* dayjs
+
+---
+
+# EXPORT FEATURES
+
+Users can export:
+
+* Excel
+* CSV
+
+Future versions may support:
+
+* PDF reports
+* Accounting exports
+
+---
+
+# DATA STORAGE
+
+Save:
+
+* Uploaded statements
+* Parsed transactions
+* Categories
+* Analysis results
+
+Use:
+
+* Supabase
+* Prisma
+
+---
+
+# PRIVACY
+
+The application must emphasize:
+
+✓ No bank login
+
+✓ No account linking
+
+✓ No SMS access
+
+✓ No financial credentials
+
+✓ User-controlled uploads
+
+---
+
+# FEATURES INCLUDED IN VERSION 2.0
+
+✓ PDF Analysis
+
+✓ Excel Analysis
+
+✓ CSV Analysis
+
+✓ Expense Tracking
+
+✓ Categories
+
+✓ Charts
+
+✓ Dashboard
+
+✓ Merchant Analysis
+
+✓ Subscription Detection
+
+✓ Transaction Search
+
+✓ Analyze Converted PDFs
+
+---
+
+# FEATURES OUT OF SCOPE
+
+❌ OCR
+
+❌ Internet Banking
+
+❌ Account Aggregators
+
+❌ SMS Parsing
+
+❌ Open Banking APIs
+
+❌ Investment Tracking
+
+❌ Budget Planning
+
+❌ Tax Filing
+
+❌ QuickBooks Integration
+
+❌ Xero Integration
+
+---
+
+# MONETIZATION
+
+## Free Version
+
+* One statement
+* Limited transactions
+* Basic charts
+
+---
+
+## Premium
+
+* Unlimited statements
+* Unlimited transactions
+* Subscription detection
+* Advanced insights
+* Multi-statement analysis
+
+---
+
+# PRODUCT POSITIONING
+
+```text
+Bank Statement Analyzer & Expense Tracker
+```
+
+Tagline:
+
+```text
+Upload your bank statement and instantly understand your spending.
+```
+
+---
+
+# MARKETING MESSAGE
+
+Analyze PDF, Excel, and CSV bank statements in seconds.
+
+✓ No bank login
+
+✓ No SMS access
+
+✓ No account linking
+
+✓ Privacy-first
+
+Track expenses, subscriptions, income, and spending patterns with beautiful charts and insights.
+
+Powered by RobotPDF.

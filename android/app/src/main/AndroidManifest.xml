@@ -1,6 +1,17 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Network permission for API calls and ads -->
     <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Storage permissions for file picker (only for Android 12 and below) -->
+    <!-- Android 13+ uses Storage Access Framework which doesn't require these permissions -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
+    <!-- Advertising ID permission for personalized ads (Android 13+) -->
+    <!-- Required by Google Play policy for apps using AdMob -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
     <application
       android:name=".MainApplication"
@@ -9,14 +20,22 @@
       android:roundIcon="@mipmap/ic_launcher_round"
       android:allowBackup="false"
       android:theme="@style/AppTheme"
-      android:usesCleartextTraffic="${usesCleartextTraffic}"
+      android:usesCleartextTraffic="true"
       android:supportsRtl="true">
+      
+      <!-- AdMob App ID - Required for Google Mobile Ads SDK -->
+      <meta-data
+        android:name="com.google.android.gms.ads.APPLICATION_ID"
+        android:value="ca-app-pub-3990640624622013~4851271265"
+        tools:replace="android:value"/>
+      
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
         android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
         android:launchMode="singleTask"
         android:windowSoftInputMode="adjustResize"
+        android:theme="@style/SplashTheme"
         android:exported="true">
         <intent-filter>
             <action android:name="android.intent.action.MAIN" />

@@ -1,4 +1,7 @@
 {
   "name": "pdftoxl",
-  "displayName": "pdftoxl"
+  "displayName": "PDF to Excel",
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3990640624622013~1234567890"
+  }
 }
