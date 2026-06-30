@@ -31,3 +31,7 @@
     public static *** v(...);
     public static *** i(...);
 }
+
+# PDFBox Android (via react-native-html-to-pdf / pdfbox-android)
+-dontwarn com.gemalto.jp2.**
+-dontwarn com.tom_roush.pdfbox.filter.JPXFilter

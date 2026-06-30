@@ -10,7 +10,11 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Alert,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from '@react-native-vector-icons/feather';
 import { BarChart, PieChart, LineChart } from 'react-native-gifted-charts';
@@ -23,6 +27,10 @@ import {
   CATEGORY_COLORS,
   CATEGORY_ICONS,
 } from '../services/types';
+import { useSubscription } from '../context';
+import BannerAdView from '../components/BannerAdView';
+import { exportAnalysisReportToPDF } from '../services/exportService';
+import { showRewardedInterstitialAd } from '../services/ads';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -78,6 +86,75 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const { result, fileName } = route.params;
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
+  const { isPro, canExportBankReport, recordBankExport, showPaywall } = useSubscription();
+
+  // ─── Open / Share the generated PDF properly ───────────────────────────────
+  const openPDF = useCallback(async (filePath: string) => {
+    if (Platform.OS === 'android') {
+      // On Android: open with native PDF viewer / share sheet
+      // actionViewIntent triggers a proper "Open with" dialog (PDF viewers, Drive, etc.)
+      await ReactNativeBlobUtil.android.actionViewIntent(
+        filePath,
+        'application/pdf',
+      );
+    } else {
+      // On iOS: use system share sheet — supports AirDrop, Files, Mail, etc.
+      const { Share } = require('react-native');
+      await Share.share({ url: `file://${filePath}` });
+    }
+  }, []);
+
+  // ─── Export Handler ───────────────────────────────────────────────────────
+  const handleExport = useCallback(async () => {
+    if (isPro) {
+      // Pro: export directly, open PDF
+      try {
+        setIsExporting(true);
+        const filePath = await exportAnalysisReportToPDF(result, fileName);
+        await openPDF(filePath);
+      } catch (e: any) {
+        Alert.alert('Export Failed', e?.message || 'Could not generate PDF report.');
+      } finally {
+        setIsExporting(false);
+      }
+    } else if (canExportBankReport()) {
+      // Free: show rewarded ad first, then export
+      Alert.alert(
+        'Export Report',
+        'Watch a short ad to export your analysis report as PDF. You get 1 free export per month.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Watch Ad & Export',
+            onPress: async () => {
+              try {
+                setIsExporting(true);
+                await showRewardedInterstitialAd(false);
+                const filePath = await exportAnalysisReportToPDF(result, fileName);
+                await recordBankExport();
+                await openPDF(filePath);
+              } catch (e: any) {
+                Alert.alert('Export Failed', e?.message || 'Could not generate PDF report.');
+              } finally {
+                setIsExporting(false);
+              }
+            },
+          },
+        ],
+      );
+    } else {
+      // Free limit exhausted
+      Alert.alert(
+        'Monthly Limit Reached',
+        "You've used your 1 free export this month. Upgrade to Pro for unlimited exports.",
+        [
+          { text: 'Not Now', style: 'cancel' },
+          { text: 'Upgrade to Pro', onPress: () => showPaywall() },
+        ],
+      );
+    }
+  }, [isPro, canExportBankReport, recordBankExport, showPaywall, result, fileName, openPDF]);
 
   if (!result || result.transactions.length === 0) {
     return (
@@ -320,6 +397,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 <View style={styles.subInfo}>
                   <Text style={styles.subMerchant}>{sub.merchant}</Text>
                   <Text style={styles.subFrequency}>{sub.frequency}</Text>
+                  {sub.nextExpectedDate && (
+                    <Text style={styles.subNextDate}>
+                      Next: {dayjs(sub.nextExpectedDate).format('DD MMM YYYY')}
+                    </Text>
+                  )}
                 </View>
                 <Text style={styles.subAmount}>
                   {formatCurrency(sub.amount)}
@@ -752,12 +834,30 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           <Feather name="arrow-left" size={ms(22)} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Statement Analysis</Text>
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.headerTitle}>Statement Analysis</Text>
+            {isPro && (
+              <View style={styles.proBadge}>
+                <Feather name="award" size={ms(10)} color="#FFF" style={{ marginRight: 2 }} />
+                <Text style={styles.proBadgeText}>PRO</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.headerSubtitle} numberOfLines={1}>
             {fileName}
           </Text>
         </View>
-        <View style={styles.headerSpacer} />
+        {/* Export button */}
+        <TouchableOpacity
+          style={styles.exportBtn}
+          onPress={handleExport}
+          disabled={isExporting}
+        >
+          {isExporting
+            ? <ActivityIndicator size="small" color={Colors.primary} />
+            : <Feather name="download" size={ms(20)} color={Colors.primary} />
+          }
+        </TouchableOpacity>
       </View>
 
       {/* Tab bar */}
@@ -795,6 +895,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
       >
         {renderTabContent()}
       </ScrollView>
+
+      {/* Banner Ad — fixed footer, only for free users, no overlap with content */}
+      <BannerAdView style={styles.adFooter} />
     </SafeAreaView>
   );
 };
@@ -826,6 +929,30 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   headerCenter: { flex: 1, alignItems: 'center' },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.accent,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  proBadgeText: { fontSize: ms(9), fontWeight: '800', color: '#FFF', letterSpacing: 0.5 },
+  exportBtn: {
+    width: ms(44),
+    height: ms(44),
+    borderRadius: radius.md,
+    backgroundColor: Colors.primaryMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  adFooter: {
+    width: '100%',
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
   headerTitle: {
     fontSize: fontSize.lg,
     fontWeight: '700',
@@ -975,6 +1102,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   subFrequency: { fontSize: fontSize.xs, color: Colors.textTertiary },
+  subNextDate: { fontSize: fontSize.xs, color: Colors.primary, marginTop: 1, fontWeight: '600' },
   subAmount: {
     fontSize: fontSize.sm,
     fontWeight: '700',

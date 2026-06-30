@@ -9,13 +9,15 @@ import {
   StyleSheet,
   Animated,
   TouchableOpacity,
+  Image,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Feather from '@react-native-vector-icons/feather';
 import { Colors, wp, hp, ms, fontSize, spacing, radius } from '../theme';
-
 import { useSubscription } from '../context';
+import BannerAdView from '../components/BannerAdView';
 
 interface HomeScreenProps {
   navigation: any;
@@ -51,22 +53,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         >
           <View style={styles.logoContainer}>
             <View style={styles.logoIconWrapper}>
-              <LinearGradient
-                colors={[Colors.primary, Colors.accent]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+              <Image
+                source={require('../../android/app/src/main/res/drawable/logo.png')}
                 style={styles.logoIcon}
-              >
-                <Feather
-                  name="file-text"
-                  size={ms(20)}
-                  color={Colors.textInverse}
-                />
-              </LinearGradient>
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.logoText}>PDF to Excel</Text>
             {isPro && (
               <View style={styles.proBadge}>
+                <Feather name="award" size={ms(10)} color={Colors.textInverse} style={{ marginRight: 3 }} />
                 <Text style={styles.proBadgeText}>PRO</Text>
               </View>
             )}
@@ -206,10 +202,57 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
         </Animated.View>
 
-        <View style={styles.poweredBy}>
-          <Text style={styles.poweredByText}>Powered by </Text>
-          <Text style={styles.poweredByBrand}>RobotPDF</Text>
-        </View>
+        {/* Section — Try our free PDF tools */}
+        <Animated.View
+          style={[
+            styles.freeToolsSection,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
+        >
+          <Text style={styles.sectionLabel}>Try our free PDF tools</Text>
+          <View style={styles.freeToolsRow}>
+            {/* Merge PDF Card */}
+            <TouchableOpacity
+              style={styles.freeToolCard}
+              onPress={() => Linking.openURL('https://play.google.com/store/apps/details?id=com.robotpdf.mergepdf')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.freeToolIconContainer}>
+                <Image
+                  source={require('../../assets/mergepdf.png')}
+                  style={styles.freeToolImage}
+                  resizeMode="cover"
+                />
+              </View>
+              <View style={styles.freeToolContent}>
+                <Text style={styles.freeToolTitle}>Merge PDF</Text>
+                <Text style={styles.freeToolDesc}>Combine multiple PDFs into one</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Split PDF Card */}
+            <TouchableOpacity
+              style={styles.freeToolCard}
+              onPress={() => Linking.openURL('https://play.google.com/store/apps/details?id=com.robotpdf.split')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.freeToolIconContainer}>
+                <Image
+                  source={require('../../assets/splitpdf.png')}
+                  style={styles.freeToolImage}
+                  resizeMode="cover"
+                />
+              </View>
+              <View style={styles.freeToolContent}>
+                <Text style={styles.freeToolTitle}>Split PDF</Text>
+                <Text style={styles.freeToolDesc}>Extract pages from your PDF</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
+        {/* Spacer pushes ad + footer to bottom */}
+        <View style={styles.spacer} />
 
         {/* Upgrade to Pro button for non-Pro users */}
         {!isPro && (
@@ -225,10 +268,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               style={styles.upgradeGradient}
             >
               <Feather name="zap" size={ms(14)} color={Colors.textInverse} />
-              <Text style={styles.upgradeText}>Remove Ads</Text>
+              <Text style={styles.upgradeText}>Remove Ads · Go Pro</Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
+
+        <View style={styles.poweredBy}>
+          <Text style={styles.poweredByText}>Powered by </Text>
+          <Text style={styles.poweredByBrand}>RobotPDF</Text>
+        </View>
+
+        {/* Banner Ad — clearly separated at bottom, free users only */}
+        <BannerAdView style={styles.adContainer} />
       </View>
     </SafeAreaView>
   );
@@ -273,9 +324,11 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
   proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.accent,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: radius.sm,
     marginLeft: spacing.sm,
   },
@@ -363,12 +416,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.primary,
   },
+  spacer: { flex: 1 },
   poweredBy: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: hp(1),
-    marginTop: 'auto',
+    paddingBottom: hp(0.5),
   },
   poweredByText: { fontSize: fontSize.xs, color: Colors.textTertiary },
   poweredByBrand: {
@@ -376,7 +429,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.primary,
   },
-  upgradeButton: { alignSelf: 'center', marginBottom: hp(2) },
+  upgradeButton: { alignSelf: 'center', marginBottom: hp(1) },
   upgradeGradient: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -389,6 +442,65 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '700',
     color: Colors.textInverse,
+  },
+  adContainer: {
+    marginBottom: hp(1),
+    marginTop: hp(0.5),
+  },
+  freeToolsSection: {
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  freeToolsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  freeToolCard: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    shadowColor: Colors.shadowColor,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  freeToolIconContainer: {
+    width: ms(60),
+    height: ms(60),
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  freeToolImage: {
+    width: '100%',
+    height: '100%',
+  },
+  freeToolContent: {
+    alignItems: 'center',
+  },
+  freeToolTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  freeToolDesc: {
+    fontSize: fontSize.xs,
+    color: Colors.textSecondary,
+    marginTop: 2,
+    textAlign: 'center',
+    lineHeight: ms(16),
   },
 });
 

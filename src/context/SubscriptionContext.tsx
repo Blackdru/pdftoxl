@@ -1,9 +1,11 @@
 /**
  * SubscriptionContext - Global subscription state management
+ * Tracks Pro status, monthly usage limits, and ad state
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { CustomerInfo } from 'react-native-purchases';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   initializeRevenueCat,
   isPro as checkIsPro,
@@ -19,6 +21,57 @@ import {
 import { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { loadRewardedInterstitialAd, clearAllAds } from '../services/ads';
 
+// ─── Usage Limits ──────────────────────────────────────────────────────────────
+const FREE_PDF_CONVERSIONS_PER_MONTH = 5;
+const FREE_BANK_EXPORTS_PER_MONTH = 1;
+
+const STORAGE_KEYS = {
+  PDF_COUNT: '@usage/pdf_count',
+  PDF_MONTH: '@usage/pdf_month',
+  EXPORT_COUNT: '@usage/export_count',
+  EXPORT_MONTH: '@usage/export_month',
+};
+
+function getCurrentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+async function getMonthlyCount(countKey: string, monthKey: string): Promise<number> {
+  try {
+    const [count, month] = await Promise.all([
+      AsyncStorage.getItem(countKey),
+      AsyncStorage.getItem(monthKey),
+    ]);
+    const currentMonth = getCurrentMonthKey();
+    if (month !== currentMonth) {
+      // New month — reset
+      await Promise.all([
+        AsyncStorage.setItem(countKey, '0'),
+        AsyncStorage.setItem(monthKey, currentMonth),
+      ]);
+      return 0;
+    }
+    return parseInt(count ?? '0', 10);
+  } catch {
+    return 0;
+  }
+}
+
+async function incrementMonthlyCount(countKey: string, monthKey: string): Promise<number> {
+  const current = await getMonthlyCount(countKey, monthKey);
+  const next = current + 1;
+  await AsyncStorage.setItem(countKey, String(next));
+  return next;
+}
+
+// ─── Context Types ──────────────────────────────────────────────────────────────
+
+interface UsageCounts {
+  pdfConversionsThisMonth: number;
+  bankExportsThisMonth: number;
+}
+
 interface SubscriptionState {
   isInitialized: boolean;
   isPro: boolean;
@@ -29,6 +82,7 @@ interface SubscriptionState {
     productIdentifier?: string;
     willRenew: boolean;
   } | null;
+  usage: UsageCounts;
 }
 
 interface SubscriptionContextType extends SubscriptionState {
@@ -37,6 +91,12 @@ interface SubscriptionContextType extends SubscriptionState {
   showPaywallIfNeeded: () => Promise<{ result: PAYWALL_RESULT; isPro: boolean }>;
   showCustomerCenter: () => Promise<void>;
   restore: () => Promise<{ success: boolean; isPro: boolean; error?: string }>;
+  // Usage limits
+  canConvertPdf: () => boolean;
+  canExportBankReport: () => boolean;
+  recordPdfConversion: () => Promise<void>;
+  recordBankExport: () => Promise<void>;
+  pdfConversionsRemaining: () => number;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -52,7 +112,24 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     isLoading: true,
     customerInfo: null,
     subscriptionDetails: null,
+    usage: { pdfConversionsThisMonth: 0, bankExportsThisMonth: 0 },
   });
+
+  // Load usage counts
+  const loadUsageCounts = useCallback(async () => {
+    try {
+      const [pdfCount, exportCount] = await Promise.all([
+        getMonthlyCount(STORAGE_KEYS.PDF_COUNT, STORAGE_KEYS.PDF_MONTH),
+        getMonthlyCount(STORAGE_KEYS.EXPORT_COUNT, STORAGE_KEYS.EXPORT_MONTH),
+      ]);
+      setState(prev => ({
+        ...prev,
+        usage: { pdfConversionsThisMonth: pdfCount, bankExportsThisMonth: exportCount },
+      }));
+    } catch (e) {
+      console.error('Failed to load usage counts:', e);
+    }
+  }, []);
 
   // Initialize RevenueCat on mount
   useEffect(() => {
@@ -62,9 +139,10 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
         await initializeRevenueCat();
         console.log('RevenueCat initialized, refreshing subscription state...');
         await refreshSubscriptionState();
+        await loadUsageCounts();
         setState(prev => ({ ...prev, isInitialized: true, isLoading: false }));
         console.log('Subscription initialization complete');
-        
+
         // Preload ads only for non-Pro users
         try {
           const proStatus = await checkIsPro();
@@ -95,26 +173,23 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     };
 
     initialize();
-  }, []);
+  }, [loadUsageCounts]);
 
-  // Listen for customer info updates - set up once without dependencies to avoid stale closures
+  // Listen for customer info updates
   useEffect(() => {
     const unsubscribe = addCustomerInfoUpdateListener((info) => {
       try {
-        // Safely check Pro status with null checks - check directly here to avoid stale closure
         const isProNow = info?.entitlements?.active?.[ENTITLEMENT_ID] !== undefined;
-        
+
         console.log('Customer info updated:', {
           isProNow,
           entitlementId: ENTITLEMENT_ID,
           availableEntitlements: Object.keys(info?.entitlements?.active || {}),
         });
-        
-        // Update state and get previous value in the same operation
+
         setState(prev => {
           const wasProBefore = prev.isPro;
-          
-          // Handle ad loading/clearing based on Pro status change
+
           if (isProNow && !wasProBefore) {
             console.log('User upgraded to Pro - clearing all ads');
             try {
@@ -128,7 +203,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
               console.error('Error preloading ads:', adError);
             });
           }
-          
+
           return {
             ...prev,
             isPro: isProNow,
@@ -147,11 +222,10 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
         console.error('Error unsubscribing from customer info updates:', error);
       }
     };
-  }, []); // Empty dependency array - set up listener once and never recreate
+  }, []);
 
   const refreshSubscriptionState = async () => {
     try {
-      // Use Promise.allSettled to handle individual failures gracefully
       const results = await Promise.allSettled([
         checkIsPro(),
         getCustomerInfo(),
@@ -160,8 +234,8 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
 
       const proStatus = results[0].status === 'fulfilled' ? results[0].value : false;
       const customerInfo = results[1].status === 'fulfilled' ? results[1].value : null;
-      const subscriptionStatus = results[2].status === 'fulfilled' 
-        ? results[2].value 
+      const subscriptionStatus = results[2].status === 'fulfilled'
+        ? results[2].value
         : { isPro: false, willRenew: false };
 
       console.log('Subscription state refreshed:', {
@@ -182,7 +256,6 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
       }));
     } catch (error) {
       console.error('Error refreshing subscription state:', error);
-      // Set safe defaults on error
       setState(prev => ({
         ...prev,
         isPro: false,
@@ -195,17 +268,15 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const refreshSubscription = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true }));
     await refreshSubscriptionState();
+    await loadUsageCounts();
     setState(prev => ({ ...prev, isLoading: false }));
-  }, []);
+  }, [loadUsageCounts]);
 
   const showPaywall = useCallback(async () => {
     const result = await presentPaywall();
     if (result.isPro) {
-      // Immediately update state with the Pro status to prevent race conditions
       setState(prev => ({ ...prev, isPro: true }));
-      // Clear ads immediately after successful subscription
       clearAllAds();
-      // Then refresh full state in background
       refreshSubscriptionState();
     }
     return result;
@@ -214,11 +285,8 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
   const showPaywallIfNeeded = useCallback(async () => {
     const result = await presentPaywallIfNeeded();
     if (result.isPro) {
-      // Immediately update state with the Pro status to prevent race conditions
       setState(prev => ({ ...prev, isPro: true }));
-      // Clear ads immediately after successful subscription
       clearAllAds();
-      // Then refresh full state in background
       refreshSubscriptionState();
     }
     return result;
@@ -237,6 +305,41 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     return result;
   }, []);
 
+  // ─── Usage Limit Helpers ─────────────────────────────────────────────────────
+
+  const canConvertPdf = useCallback((): boolean => {
+    if (state.isPro) return true;
+    return state.usage.pdfConversionsThisMonth < FREE_PDF_CONVERSIONS_PER_MONTH;
+  }, [state.isPro, state.usage.pdfConversionsThisMonth]);
+
+  const canExportBankReport = useCallback((): boolean => {
+    if (state.isPro) return true;
+    return state.usage.bankExportsThisMonth < FREE_BANK_EXPORTS_PER_MONTH;
+  }, [state.isPro, state.usage.bankExportsThisMonth]);
+
+  const recordPdfConversion = useCallback(async (): Promise<void> => {
+    if (state.isPro) return;
+    const newCount = await incrementMonthlyCount(STORAGE_KEYS.PDF_COUNT, STORAGE_KEYS.PDF_MONTH);
+    setState(prev => ({
+      ...prev,
+      usage: { ...prev.usage, pdfConversionsThisMonth: newCount },
+    }));
+  }, [state.isPro]);
+
+  const recordBankExport = useCallback(async (): Promise<void> => {
+    if (state.isPro) return;
+    const newCount = await incrementMonthlyCount(STORAGE_KEYS.EXPORT_COUNT, STORAGE_KEYS.EXPORT_MONTH);
+    setState(prev => ({
+      ...prev,
+      usage: { ...prev.usage, bankExportsThisMonth: newCount },
+    }));
+  }, [state.isPro]);
+
+  const pdfConversionsRemaining = useCallback((): number => {
+    if (state.isPro) return Infinity;
+    return Math.max(0, FREE_PDF_CONVERSIONS_PER_MONTH - state.usage.pdfConversionsThisMonth);
+  }, [state.isPro, state.usage.pdfConversionsThisMonth]);
+
   const value: SubscriptionContextType = {
     ...state,
     refreshSubscription,
@@ -244,6 +347,11 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     showPaywallIfNeeded,
     showCustomerCenter,
     restore,
+    canConvertPdf,
+    canExportBankReport,
+    recordPdfConversion,
+    recordBankExport,
+    pdfConversionsRemaining,
   };
 
   return (

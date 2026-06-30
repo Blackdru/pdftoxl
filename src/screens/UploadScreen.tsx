@@ -34,7 +34,7 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState<ProcessingStage>('uploading');
-  const { isPro } = useSubscription();
+  const { isPro, canConvertPdf, recordPdfConversion, pdfConversionsRemaining, showPaywall } = useSubscription();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -90,6 +90,19 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation }) => {
       return;
     }
 
+    // Check monthly conversion limit for free users
+    if (!isPro && !canConvertPdf()) {
+      Alert.alert(
+        'Monthly Limit Reached',
+        `You've used all 5 free PDF conversions this month. Upgrade to Pro for unlimited conversions.`,
+        [
+          { text: 'Not Now', style: 'cancel' },
+          { text: 'Upgrade to Pro', onPress: () => showPaywall() },
+        ],
+      );
+      return;
+    }
+
     setIsLoading(true);
     setProgress(0);
     setStage('uploading');
@@ -114,8 +127,12 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation }) => {
       setProgress(100);
       await new Promise(resolve => setTimeout(resolve, 500));
 
+      // Record successful conversion (only for free users)
+      if (!isPro) {
+        await recordPdfConversion();
+      }
+
       // Show rewarded interstitial ad before navigating to results (only for non-Pro users)
-      // This is policy-compliant as it's shown after a user-initiated action
       if (!isPro) {
         await showRewardedInterstitialAd(isPro);
       }
@@ -168,7 +185,14 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation }) => {
               color={Colors.textPrimary}
             />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Select PDF</Text>
+          <View style={styles.headerTitleGroup}>
+            <Text style={styles.headerTitle}>Select PDF</Text>
+            {!isPro && (
+              <Text style={styles.conversionCounter}>
+                {pdfConversionsRemaining()} of 5 free left
+              </Text>
+            )}
+          </View>
           {selectedFile ? (
             <TouchableOpacity onPress={clearFile} style={styles.clearBtn}>
               <Text style={styles.clearBtnText}>Clear</Text>
@@ -320,6 +344,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xl,
     fontWeight: '700',
     color: Colors.textPrimary,
+  },
+  headerTitleGroup: { alignItems: 'center', flex: 1 },
+  conversionCounter: {
+    fontSize: ms(10),
+    color: Colors.textTertiary,
+    fontWeight: '600',
+    marginTop: 2,
   },
   clearBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   clearBtnText: {

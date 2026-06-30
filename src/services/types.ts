@@ -85,6 +85,7 @@ export interface Subscription {
   amount: number;
   frequency: string;  // 'Monthly' | 'Weekly' | 'Quarterly' | 'Yearly' | 'Recurring'
   lastDate: string;
+  nextExpectedDate?: string; // predicted next charge date
   category?: ExpenseCategory;
 }
 

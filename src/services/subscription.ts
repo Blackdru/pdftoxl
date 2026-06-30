@@ -12,12 +12,12 @@ import Purchases, {
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 
 // RevenueCat API Key
-const REVENUECAT_API_KEY = 'goog_oKnhbMEDMvVbXHNmVaTEIPLHkzb';
+const REVENUECAT_API_KEY = 'goog_AaUMsrbRVSlauNmlzciPzKbgZZO';
 
 // Entitlement identifier - MUST match exactly what's in RevenueCat dashboard
 // Display Name: "pdf to excel Pro"
 // RevenueCat ID: entlad6deee7e3
-export const ENTITLEMENT_ID = 'pdf to excel Pro';
+export const ENTITLEMENT_ID = 'pdfxl Pro';
 
 // Product identifiers - must match RevenueCat product IDs
 export const PRODUCT_IDS = {
@@ -43,14 +43,14 @@ export const initializeRevenueCat = async (): Promise<void> => {
 
     // Configure RevenueCat with proper error handling
     console.log('Initializing RevenueCat with API key...');
-    await Purchases.configure({ 
+    await Purchases.configure({
       apiKey: REVENUECAT_API_KEY,
       appUserID: undefined, // Let RevenueCat generate anonymous ID
     });
 
     // Get initial customer info
     currentCustomerInfo = await Purchases.getCustomerInfo();
-    
+
     isInitialized = true;
     console.log('RevenueCat initialized successfully');
   } catch (error) {
@@ -71,23 +71,23 @@ export const isPro = async (): Promise<boolean> => {
   try {
     const customerInfo = await Purchases.getCustomerInfo();
     currentCustomerInfo = customerInfo;
-    
+
     // Check if user has the Pro entitlement with null safety
     if (!customerInfo || !customerInfo.entitlements || !customerInfo.entitlements.active) {
       console.log('Customer info or entitlements not available');
       return false;
     }
-    
+
     const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
     const isActive = entitlement !== undefined && entitlement.isActive;
-    
+
     console.log('Pro status check:', {
       hasEntitlement: entitlement !== undefined,
       isActive,
       entitlementId: ENTITLEMENT_ID,
       availableEntitlements: Object.keys(customerInfo.entitlements.active || {}),
     });
-    
+
     return isActive;
   } catch (error) {
     console.error('Error checking Pro status:', error);
@@ -138,10 +138,10 @@ export const purchasePackage = async (
   try {
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     currentCustomerInfo = customerInfo;
-    
+
     // Safely check Pro status with null checks
     const isNowPro = customerInfo?.entitlements?.active?.[ENTITLEMENT_ID] !== undefined;
-    
+
     return {
       success: isNowPro,
       customerInfo,
@@ -151,7 +151,7 @@ export const purchasePackage = async (
     if (error.userCancelled) {
       return { success: false, error: 'Purchase cancelled' };
     }
-    
+
     console.error('Purchase error:', error);
     return { success: false, error: error.message || 'Purchase failed' };
   }
@@ -168,10 +168,10 @@ export const restorePurchases = async (): Promise<{
   try {
     const customerInfo = await Purchases.restorePurchases();
     currentCustomerInfo = customerInfo;
-    
+
     // Safely check Pro status with null checks
     const isNowPro = customerInfo?.entitlements?.active?.[ENTITLEMENT_ID] !== undefined;
-    
+
     return {
       success: true,
       isPro: isNowPro,
@@ -197,12 +197,12 @@ export const presentPaywall = async (): Promise<{
   try {
     console.log('Presenting RevenueCat paywall...');
     const paywallResult = await RevenueCatUI.presentPaywall();
-    
+
     // Check if user is now Pro after paywall interaction
     const isNowPro = await isPro();
-    
+
     console.log('Paywall result:', paywallResult, 'isPro:', isNowPro);
-    
+
     return {
       result: paywallResult,
       isPro: isNowPro,
@@ -232,9 +232,9 @@ export const presentPaywallIfNeeded = async (): Promise<{
     const paywallResult = await RevenueCatUI.presentPaywallIfNeeded({
       requiredEntitlementIdentifier: ENTITLEMENT_ID,
     });
-    
+
     const isNowPro = await isPro();
-    
+
     return {
       result: paywallResult,
       isPro: isNowPro,
@@ -280,7 +280,7 @@ export const addCustomerInfoUpdateListener = (
       console.error('Error in customer info update listener callback:', error);
     }
   });
-  
+
   return () => {
     try {
       subscription.remove();
@@ -301,7 +301,7 @@ export const getSubscriptionStatus = async (): Promise<{
 }> => {
   try {
     const customerInfo = await getCustomerInfo();
-    
+
     // Safely access entitlements with null checks
     if (!customerInfo || !customerInfo.entitlements || !customerInfo.entitlements.active) {
       return {
@@ -309,16 +309,16 @@ export const getSubscriptionStatus = async (): Promise<{
         willRenew: false,
       };
     }
-    
+
     const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-    
+
     if (!entitlement) {
       return {
         isPro: false,
         willRenew: false,
       };
     }
-    
+
     return {
       isPro: true,
       expirationDate: entitlement.expirationDate || undefined,

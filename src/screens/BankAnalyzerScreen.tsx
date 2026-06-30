@@ -18,6 +18,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Feather from '@react-native-vector-icons/feather';
 import { Colors, wp, hp, ms, fontSize, spacing, radius } from '../theme';
 import { Button } from '../components';
+import BannerAdView from '../components/BannerAdView';
 import PdfExtractorWebView from '../components/PdfExtractorWebView';
 import {
   parseExcelFile,
@@ -25,6 +26,7 @@ import {
   parsePdfRows,
 } from '../services/statementParser';
 import { analyzeTransactions } from '../services/analysisEngine';
+import { useSubscription } from '../context';
 
 interface SelectedFile {
   uri: string;
@@ -47,6 +49,7 @@ const BankAnalyzerScreen: React.FC<BankAnalyzerScreenProps> = ({
   const [loadingMessage, setLoadingMessage] = useState('');
   const [showWebView, setShowWebView] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
+  const { isPro } = useSubscription();
 
   // ─── File picking ────────────────────────────────────────────────────────────
 
@@ -235,8 +238,18 @@ const BankAnalyzerScreen: React.FC<BankAnalyzerScreenProps> = ({
         >
           <Feather name="arrow-left" size={ms(22)} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bank Analyzer</Text>
-        <View style={styles.headerSpacer} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Bank Analyzer</Text>
+        </View>
+        {/* PRO Badge */}
+        {isPro ? (
+          <View style={styles.proBadge}>
+            <Feather name="award" size={ms(11)} color="#FFFFFF" style={{ marginRight: 3 }} />
+            <Text style={styles.proBadgeText}>PRO</Text>
+          </View>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
       </View>
 
       {/* Info banner */}
@@ -376,6 +389,9 @@ const BankAnalyzerScreen: React.FC<BankAnalyzerScreenProps> = ({
           <Text style={styles.privacyText}> ✓ No SMS access</Text>
           <Text style={styles.privacyText}> ✓ Processed locally</Text>
         </View>
+
+        {/* Banner Ad — below privacy row, properly separated, only for free users */}
+        <BannerAdView style={styles.adInScroll} />
       </ScrollView>
 
       {/* Analyze button */}
@@ -431,6 +447,7 @@ const styles = StyleSheet.create({
     paddingVertical: hp(2),
     paddingHorizontal: wp(5),
   },
+  headerCenter: { flex: 1, alignItems: 'center' },
   backBtn: {
     width: ms(44),
     height: ms(44),
@@ -450,6 +467,22 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   headerSpacer: { width: ms(44) },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.accent,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    minWidth: ms(44),
+    justifyContent: 'center',
+  },
+  proBadgeText: {
+    fontSize: ms(10),
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
 
   // Info banner
   infoBanner: {
@@ -565,6 +598,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   privacyText: { fontSize: fontSize.xs, color: Colors.textTertiary },
+
+  // Ad in scroll
+  adInScroll: {
+    marginTop: spacing.xl,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
 
   // Footer
   footer: {
